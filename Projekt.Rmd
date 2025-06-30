@@ -1,0 +1,238 @@
+---
+title: 'Analityk kredytowy w Dream Housing Finance Company'
+author: "Martyna Szypuła, Katarzyna Wójcik, Bartosz Zawora????"
+output:
+html_document:
+  df_print: paged
+  keep_md: true
+  self_contained: true
+---
+--------------------------------------------
+
+## Wyższa Szkoła Informatyki i Zarządzania z siedzibą w Rzeszowie
+
+
+<table>
+  <tr>
+    <td>Imię i Nazwisko: </td>
+    <td style="padding-right: 20px;">Martyna Szypuła</td>
+    <td style="padding-right: 20px;">Katarzyna Wójcik</td>
+    <td style="padding-right: 20px;">Bartosz Zawora???</td>
+  </tr>
+  <tr>
+    <td>Numer albumu: </td>
+    <td>69852</td>
+    <td>70855</td>
+    <td>11111</td>
+  </tr>
+  <tr>
+    <td style="padding-right: 20px;">Rok, semestr, kierunek studiów: </td>
+    <td>4 IIZ/2023/IZ</td>
+  </tr>
+  <tr>
+    <td>Rok akademicki: </td>
+    <td>2024/2025</td>
+  </tr>
+  <tr>
+    <td>Nazwa przedmiotu: </td>
+    <td>Drążenie danych</td>
+  </tr>
+  <tr>
+    <td>Prowadzący: </td>
+    <td>dr Sebastian Wójcik</td>
+  </tr>
+</table>
+
+--------------------------------------------
+
+## Opis sytuacji
+
+Dream Housing Finance Company oferuje wszelkiego rodzaju pożyczki i kredyty. Obecne są na wszystkich obszarach miejskich, pół miejskich i wiejskich. Klient najpierw aplikuje o pożyczkę bądź kredyt, a następnie analityk kredytowy podejmuje ostateczną decyzją o przyznaniu klientowi pożyczki.
+Firma chce zautomatyzować proces przyznawania pożyczek (w czasie rzeczywistym) na podstawie szczegółów klienta dostarczonych podczas wypełniania formularza aplikacyjnego online. Te szczegóły to płeć, stan cywilny, edukacja, liczba osób pozostających na utrzymaniu, dochód, kwota pożyczki, historia kredytowa i inne. Aby zautomatyzować ten proces, dostarczyli zestaw danych o dotychczasowych decyzjach przyznania i odrzucenia wniosku kredytowego dla ponad 600 klientów. Potrzebują, aby przeanalizować dane i przygotować raport jak poszczególne zmienne wpływają na decyzję kredytową.
+
+--------------------------------------------
+
+## Pobranie i zaimportowanie bibliotek
+```{r warning = FALSE, message = FALSE}
+#Instalowanie
+# options(repos = c(CRAN = "https://cloud.r-project.org"))
+# install.packages(c("readr", "knitr", "kableExtra", "dplyr", "e1071", "ggplot2"), dependencies = TRUE)
+
+#Importowanie
+library(readr)
+library(knitr)
+library(kableExtra)
+library(dplyr)
+library(e1071)
+library(ggplot2)
+```
+
+
+## Dane
+
+Plik CSV zawierający dane o klientach z nadanym statusem przyznania bądź nie pożyczki 'Loan_Status'
+
+```{r warning=FALSE, message = FALSE}
+setwd("C:/Users/RSM18/Documents/Drazenie")
+loan_data <- read_delim("train.csv", delim = ";", 
+   escape_double = FALSE, col_types = cols(Dependents = col_number(), 
+       LoanAmount = col_double()), trim_ws = TRUE)
+attach(loan_data)
+```
+
+
+```{r warning=FALSE, message = FALSE, class.output = "scroll-100"}
+loan_data %>% knitr::kable(col.names = gsub("[_]", " ", names(loan_data)), align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% scroll_box(width = "100%", height = "300px") %>% kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left", fixed_thead = TRUE)
+```
+
+--------------------------------------------
+
+### Zadanie 1
+
+Scharakteryzuj zmienne ApplicantIncome, CoapplicantIncome, LoanAmount w zakresie: minimum, pierwszy kwartyl, medina, średnia, trzeci kwartyl, maksimum, odchylenie standardowe, wybrana miarę asymetrii i koncentracji w każdej z grup: według płci (Gender) i według stanu cywilnego (Married).
+
+#### Według płci
+
+
+```{r warning = FALSE, message = FALSE}
+loan_data %>% group_by(Gender) %>% summarise(
+  Minimum = min(ApplicantIncome, na.rm = TRUE),
+  Q1 = quantile(ApplicantIncome, probs = 0.25, na.rm = TRUE),
+  Mediana = median(ApplicantIncome, na.rm = TRUE),
+  Srednia = mean(ApplicantIncome, na.rm = TRUE),
+  Q3 = quantile(ApplicantIncome, probs = 0.75, na.rm = TRUE),
+  Maksimum = max(ApplicantIncome, na.rm = TRUE),
+  Odchylenie = sd(ApplicantIncome, na.rm = TRUE),
+  Asymetria_TMC = skewness(ApplicantIncome, na.rm = TRUE),
+  Kurtoza = kurtosis(ApplicantIncome, na.rm = TRUE)
+) %>% knitr::kable(caption = 'ApplicantIncome', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
+
+loan_data %>% group_by(Gender) %>% summarise(
+  Minimum = min(CoapplicantIncome, na.rm = TRUE),
+  Q1 = quantile(CoapplicantIncome, probs = 0.25, na.rm = TRUE),
+  Mediana = median(CoapplicantIncome, na.rm = TRUE),
+  Srednia = mean(CoapplicantIncome, na.rm = TRUE),
+  Q3 = quantile(CoapplicantIncome, probs = 0.75, na.rm = TRUE),
+  Maksimum = max(CoapplicantIncome, na.rm = TRUE),
+  Odchylenie = sd(CoapplicantIncome, na.rm = TRUE),
+  Asymetria_TMC = skewness(CoapplicantIncome, na.rm = TRUE),
+  Kurtoza = kurtosis(CoapplicantIncome, na.rm = TRUE)
+) %>% knitr::kable(caption = 'CoapplicantIncome', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
+
+loan_data %>% group_by(Gender) %>% summarise(
+  Minimum = min(LoanAmount, na.rm = TRUE),
+  Q1 = quantile(LoanAmount, probs = 0.25, na.rm = TRUE),
+  Mediana = median(LoanAmount, na.rm = TRUE),
+  Srednia = mean(LoanAmount, na.rm = TRUE),
+  Q3 = quantile(LoanAmount, probs = 0.75, na.rm = TRUE),
+  Maksimum = max(LoanAmount, na.rm = TRUE),
+  Odchylenie = sd(LoanAmount, na.rm = TRUE),
+  Asymetria_TMC = skewness(LoanAmount, na.rm = TRUE),
+  Kurtoza = kurtosis(LoanAmount, na.rm = TRUE)
+) %>% knitr::kable(caption = 'LoanAmount', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
+
+```
+
+#### Według stanu cywilnego
+
+```{r warning = FALSE, message = FALSE}
+loan_data %>% group_by(Married) %>% summarise(
+  Minimum = min(ApplicantIncome, na.rm = TRUE),
+  Q1 = quantile(ApplicantIncome, probs = 0.25, na.rm = TRUE),
+  Mediana = median(ApplicantIncome, na.rm = TRUE),
+  Srednia = mean(ApplicantIncome, na.rm = TRUE),
+  Q3 = quantile(ApplicantIncome, probs = 0.75, na.rm = TRUE),
+  Maksimum = max(ApplicantIncome, na.rm = TRUE),
+  Odchylenie = sd(ApplicantIncome, na.rm = TRUE),
+  Asymetria_TMC = skewness(ApplicantIncome, na.rm = TRUE),
+  Kurtoza = kurtosis(ApplicantIncome, na.rm = TRUE)
+) %>% knitr::kable(caption = 'ApplicantIncome', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
+
+loan_data %>% group_by(Married) %>% summarise(
+  Minimum = min(CoapplicantIncome, na.rm = TRUE),
+  Q1 = quantile(CoapplicantIncome, probs = 0.25, na.rm = TRUE),
+  Mediana = median(CoapplicantIncome, na.rm = TRUE),
+  Srednia = mean(CoapplicantIncome, na.rm = TRUE),
+  Q3 = quantile(CoapplicantIncome, probs = 0.75, na.rm = TRUE),
+  Maksimum = max(CoapplicantIncome, na.rm = TRUE),
+  Odchylenie = sd(CoapplicantIncome, na.rm = TRUE),
+  Asymetria_TMC = skewness(CoapplicantIncome, na.rm = TRUE),
+  Kurtoza = kurtosis(CoapplicantIncome, na.rm = TRUE)
+) %>% knitr::kable(caption = 'CoapplicantIncome', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
+
+loan_data %>% group_by(Married) %>% summarise(
+  Minimum = min(LoanAmount, na.rm = TRUE),
+  Q1 = quantile(LoanAmount, probs = 0.25, na.rm = TRUE),
+  Mediana = median(LoanAmount, na.rm = TRUE),
+  Srednia = mean(LoanAmount, na.rm = TRUE),
+  Q3 = quantile(LoanAmount, probs = 0.75, na.rm = TRUE),
+  Maksimum = max(LoanAmount, na.rm = TRUE),
+  Odchylenie = sd(LoanAmount, na.rm = TRUE),
+  Asymetria_TMC = skewness(LoanAmount, na.rm = TRUE),
+  Kurtoza = kurtosis(LoanAmount, na.rm = TRUE)
+) %>% knitr::kable(caption = 'LoanAmount', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
+
+```
+
+### Zadanie 4
+Dla wybranych zmiennych zrób wykres ramka-wąsy (boxplot). Niech zmienna Gender będzie tworzyła serie. Dodał tytuł, opis osi, legendę.
+
+```{r warning = FALSE, message = FALSE}
+ggplot(data = loan_data,
+       mapping = aes(x = ApplicantIncome, y = LoanAmount, color = Gender),
+       na_rm = TRUE
+       ) +
+  geom_boxplot(mapping = aes(color = Gender)) +
+  labs(
+    title = "Zależność LoanAmount od ApplicantIncome",
+    subtitle = "w podziale na płeć",
+    x = "Applicant Income",
+    y = "Loan Amount",
+    color = "Gender"
+  ) +
+  theme_minimal()
+
+ggplot(data = loan_data,
+       mapping = aes(x = CoapplicantIncome, y = LoanAmount, color = Gender),
+       na_rm = TRUE
+       ) +
+  geom_boxplot(mapping = aes(color = Gender)) +
+  labs(
+    title = "Zależność LoanAmount od CoapplicantIncome",
+    subtitle = "w podziale na płeć",
+    x = "Coapplicant Income",
+    y = "Loan Amount",
+    color = "Gender"
+  ) +
+  theme_minimal()
+
+```
+
+### Zadanie 7
+Dla par zmiennych ApplicantIncome, LoanAmount zrób wykres rozrzutu. Niech zmienna Married będzie tworzyła serie. Dodał tytuł, opis osi, legendę.
+
+```{r warning = FALSE, message = FALSE}
+ggplot(data = loan_data,
+       mapping = aes(x = ApplicantIncome, y = LoanAmount, color = Married),
+       na_rm = TRUE
+       ) +
+  geom_point(mapping = aes(color = Married)) +
+  labs(
+    title = "Wykres rozrzutu LoanAmount w zal. od Applicant Income",
+    subtitle = "w podziale na stan cywilny",
+    x = "Applicant Income",
+    y = "Loan Amount",
+    color = "Married"
+  ) +
+  theme_minimal()
+
+```
+
+### Zadanie 10
+Sprawdź czy wariancja zmiennej ApplicantIncome różni się pomiędzy grupą osób, które otrzymały pożyczkę i nie (zmienna Loan_status)
+
+```{r warning = FALSE, message = FALSE}
+loan_data %>% group_by(Loan_Status) %>% summarise(Wariancja = var(ApplicantIncome, na.rm = TRUE)) %>% knitr::kable(caption = "Wariancja ApplicantIncome", align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
+```
+
+
