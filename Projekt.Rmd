@@ -52,7 +52,7 @@ Firma chce zautomatyzować proces przyznawania pożyczek (w czasie rzeczywistym)
 
 --------------------------------------------
 
-## Pobranie i zaimportowanie bibliotek
+## Biblioteki
 ```{r warning = FALSE, message = FALSE}
 #Instalowanie
 # options(repos = c(CRAN = "https://cloud.r-project.org"))
@@ -82,7 +82,10 @@ attach(loan_data)
 
 
 ```{r warning=FALSE, message = FALSE, class.output = "scroll-100"}
-loan_data %>% knitr::kable(col.names = gsub("[_]", " ", names(loan_data)), align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% scroll_box(width = "100%", height = "300px") %>% kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left", fixed_thead = TRUE)
+loan_data %>% 
+  knitr::kable(col.names = gsub("[_]", " ", names(loan_data)), align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% 
+  scroll_box(width = "100%", height = "300px") %>% 
+  kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left", fixed_thead = TRUE)
 ```
 
 --------------------------------------------
@@ -105,7 +108,9 @@ loan_data %>% group_by(Gender) %>% summarise(
   Odchylenie = sd(ApplicantIncome, na.rm = TRUE),
   Asymetria_TMC = skewness(ApplicantIncome, na.rm = TRUE),
   Kurtoza = kurtosis(ApplicantIncome, na.rm = TRUE)
-) %>% knitr::kable(caption = 'ApplicantIncome', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
+) %>% 
+  knitr::kable(caption = 'ApplicantIncome', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% 
+  kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
 
 loan_data %>% group_by(Gender) %>% summarise(
   Minimum = min(CoapplicantIncome, na.rm = TRUE),
@@ -117,7 +122,9 @@ loan_data %>% group_by(Gender) %>% summarise(
   Odchylenie = sd(CoapplicantIncome, na.rm = TRUE),
   Asymetria_TMC = skewness(CoapplicantIncome, na.rm = TRUE),
   Kurtoza = kurtosis(CoapplicantIncome, na.rm = TRUE)
-) %>% knitr::kable(caption = 'CoapplicantIncome', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
+) %>% 
+  knitr::kable(caption = 'CoapplicantIncome', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% 
+  kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
 
 loan_data %>% group_by(Gender) %>% summarise(
   Minimum = min(LoanAmount, na.rm = TRUE),
@@ -129,14 +136,17 @@ loan_data %>% group_by(Gender) %>% summarise(
   Odchylenie = sd(LoanAmount, na.rm = TRUE),
   Asymetria_TMC = skewness(LoanAmount, na.rm = TRUE),
   Kurtoza = kurtosis(LoanAmount, na.rm = TRUE)
-) %>% knitr::kable(caption = 'LoanAmount', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
+) %>% 
+  knitr::kable(caption = 'LoanAmount', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% 
+  kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
 
 ```
 
 #### Według stanu cywilnego
 
 ```{r warning = FALSE, message = FALSE}
-loan_data %>% group_by(Married) %>% summarise(
+loan_data %>% filter(is.na(Married) == FALSE) %>% 
+  group_by(Married) %>% summarise(
   Minimum = min(ApplicantIncome, na.rm = TRUE),
   Q1 = quantile(ApplicantIncome, probs = 0.25, na.rm = TRUE),
   Mediana = median(ApplicantIncome, na.rm = TRUE),
@@ -146,9 +156,12 @@ loan_data %>% group_by(Married) %>% summarise(
   Odchylenie = sd(ApplicantIncome, na.rm = TRUE),
   Asymetria_TMC = skewness(ApplicantIncome, na.rm = TRUE),
   Kurtoza = kurtosis(ApplicantIncome, na.rm = TRUE)
-) %>% knitr::kable(caption = 'ApplicantIncome', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
+) %>% 
+  knitr::kable(caption = 'ApplicantIncome', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% 
+  kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
 
-loan_data %>% group_by(Married) %>% summarise(
+loan_data %>% filter(is.na(Married) == FALSE) %>%
+  group_by(Married) %>% summarise(
   Minimum = min(CoapplicantIncome, na.rm = TRUE),
   Q1 = quantile(CoapplicantIncome, probs = 0.25, na.rm = TRUE),
   Mediana = median(CoapplicantIncome, na.rm = TRUE),
@@ -158,9 +171,12 @@ loan_data %>% group_by(Married) %>% summarise(
   Odchylenie = sd(CoapplicantIncome, na.rm = TRUE),
   Asymetria_TMC = skewness(CoapplicantIncome, na.rm = TRUE),
   Kurtoza = kurtosis(CoapplicantIncome, na.rm = TRUE)
-) %>% knitr::kable(caption = 'CoapplicantIncome', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
+) %>% 
+  knitr::kable(caption = 'CoapplicantIncome', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% 
+  kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
 
-loan_data %>% group_by(Married) %>% summarise(
+loan_data %>% filter(is.na(Married) == FALSE) %>% 
+  group_by(Married) %>% summarise(
   Minimum = min(LoanAmount, na.rm = TRUE),
   Q1 = quantile(LoanAmount, probs = 0.25, na.rm = TRUE),
   Mediana = median(LoanAmount, na.rm = TRUE),
@@ -170,7 +186,9 @@ loan_data %>% group_by(Married) %>% summarise(
   Odchylenie = sd(LoanAmount, na.rm = TRUE),
   Asymetria_TMC = skewness(LoanAmount, na.rm = TRUE),
   Kurtoza = kurtosis(LoanAmount, na.rm = TRUE)
-) %>% knitr::kable(caption = 'LoanAmount', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
+) %>% 
+  knitr::kable(caption = 'LoanAmount', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% 
+  kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
 
 ```
 
@@ -212,7 +230,7 @@ ggplot(data = loan_data,
 Dla par zmiennych ApplicantIncome, LoanAmount zrób wykres rozrzutu. Niech zmienna Married będzie tworzyła serie. Dodał tytuł, opis osi, legendę.
 
 ```{r warning = FALSE, message = FALSE}
-ggplot(data = loan_data,
+ggplot(data = (loan_data %>% filter(is.na(Married) == FALSE)),
        mapping = aes(x = ApplicantIncome, y = LoanAmount, color = Married),
        na_rm = TRUE
        ) +
@@ -232,7 +250,10 @@ ggplot(data = loan_data,
 Sprawdź czy wariancja zmiennej ApplicantIncome różni się pomiędzy grupą osób, które otrzymały pożyczkę i nie (zmienna Loan_status)
 
 ```{r warning = FALSE, message = FALSE}
-loan_data %>% group_by(Loan_Status) %>% summarise(Wariancja = var(ApplicantIncome, na.rm = TRUE)) %>% knitr::kable(caption = "Wariancja ApplicantIncome", align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
+loan_data %>% group_by(Loan_Status) %>% 
+  summarise(Wariancja = var(ApplicantIncome, na.rm = TRUE)) %>% 
+  knitr::kable(caption = "Wariancja ApplicantIncome", align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% 
+  kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
 ```
 
 
