@@ -81,7 +81,7 @@ attach(loan_data)
 ```
 
 
-```{r warning=FALSE, message = FALSE, class.output = "scroll-100"}
+```{r warning=FALSE, message = FALSE}
 loan_data %>% 
   knitr::kable(col.names = gsub("[_]", " ", names(loan_data)), align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% 
   scroll_box(width = "100%", height = "300px") %>% 
