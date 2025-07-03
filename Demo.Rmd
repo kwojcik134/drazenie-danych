@@ -158,10 +158,10 @@ image(volcano)
 
 Dostępne są języki: python, Rcpp, SQL, Stan, Bash i D3. Zazwyczaj trzeba doinstalować pakiety np. do pythona jest `miniconda`. We fragmencie kodu należy ustawić język.
 
-```{python}
+```{r python}
 x = 'witamy w świecie python'
 print(x.split(' '))
-```
+``` 
 
 ```{r echo=TRUE}
 x = 'witamy w świecie python'
