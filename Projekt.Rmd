@@ -219,7 +219,29 @@ loan_status_married_df %>%
 ```
 ### zadanie 3
 Oblicz jak często pożyczkę dostawały osoby Self_employed=Y a jak często osoby Self_employed=N. (tabela liczności). 
+```{r warning = FALSE, message = FALSE}
+cat("### Częstość przyznawania pożyczek według statusu zatrudnienia (Self_Employed) ###\n")
+loan_status_self_employed <- data %>%
+  dplyr::group_by(Self_Employed, Loan_Status) %>%
+  dplyr::summarise(Liczba = n(), .groups = 'drop') %>% # Dodano .groups = 'drop' dla czystszego wyniku
+  dplyr::ungroup() %>%
+  dplyr::group_by(Self_Employed) %>%
+  dplyr::mutate(Procent = Liczba / sum(Liczba) * 100)
 
+loan_status_self_employed %>%
+  knitr::kable(
+    caption = 'Częstość przyznawania pożyczek według statusu zatrudnienia',
+    align = 'c',
+    digits = 2,
+    format.args = list(big.mark = ",") # Formatowanie liczb
+  ) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "responsive"),
+    full_width = FALSE,
+    position = "left"
+  )
+loan_status_self_employed
+```
 
 ### Zadanie 4
 Dla wybranych zmiennych zrób wykres ramka-wąsy (boxplot). Niech zmienna Gender będzie tworzyła serie. Dodał tytuł, opis osi, legendę.
@@ -267,12 +289,36 @@ ggplot(data = loan_data,
        y = "Dochód Wnioskodawcy",
        fill = "Stan Cywilny") +
   theme_minimal()
+
 ```
 ### Zadanie 6
  Dla pary zmiennych ApplicantIncome, CoapplicantIncome zrób wykres rozrzutu. Niech zmienna Self_employed będzie tworzyła serie. Dodał tytuł, opis osi, legendę.
-
+ 
+ ```{r warning = FALSE, message = FALSE}
+scatterplot_income_self_employed <- data %>%
+  ggplot(aes(x = ApplicantIncome, y = CoapplicantIncome, color = Self_Employed)) +
+  geom_point(alpha = 0.6) + 
+  labs(
+    title = "Zależność między dochodem wnioskodawcy a dochodem współwnioskodawcy według statusu zatrudnienia",
+    x = "Dochód wnioskodawcy",
+    y = "Dochód współwnioskodawcy",
+    color = "Samozatrudniony" 
+  ) +
+  theme_minimal() 
+```
 ### Zadanie 7
-
+Dla pary zmiennych ApplicantIncome, CoapplicantIncome zrób wykres rozrzutu. Niech zmienna Self_employed będzie tworzyła serie. Dodał tytuł, opis osi, legendę.
+```{r warning = FALSE, message = FALSE}
+  ggplot(aes(x = ApplicantIncome, y = CoapplicantIncome, color = Self_Employed)) +
+  geom_point(alpha = 0.6) + 
+  labs(
+    title = "Zależność między dochodem wnioskodawcy a dochodem współwnioskodawcy według statusu zatrudnienia", 
+    x = "Dochód wnioskodawcy",       
+    y = "Dochód współwnioskodawcy",  
+    color = "Samozatrudniony"       
+  ) +
+  theme_minimal() 
+```
 ### Zadanie 8
 Dla par zmiennych ApplicantIncome, LoanAmount zrób wykres rozrzutu. Niech zmienna Married będzie tworzyła serie. Dodał tytuł, opis osi, legendę.
 
@@ -438,3 +484,156 @@ loan_data %>% group_by(Loan_Status) %>%
   kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
 ```
 
+### Zdanie 12 Model
+```{r warning = FALSE, message = FALSE}
+library(dplyr) # Do manipulacji danymi
+library(caret) # Do walidacji krzyżowej i oceny modelu
+library(MLmetrics) # Do obliczania metryk (F1_Score, Precision, Recall)
+
+# Upewnij się, że 'data' to Twój główny zbiór danych
+# Jeśli Twoja ramka danych nazywa się inaczej, zmień 'data' na odpowiednią nazwę.
+
+# 1. Obsługa brakujących wartości (imputacja)
+# Użyjemy imputacji modą dla zmiennych kategorycznych i medianą dla numerycznych.
+
+# Zmienne kategoryczne do imputacji modą
+cat_vars_to_impute <- c("Gender", "Married", "Dependents", "Self_Employed", "Loan_Amount_Term", "Credit_History")
+for (var in cat_vars_to_impute) {
+  if (var %in% names(data)) {
+    mode_val <- names(sort(table(data[[var]]), decreasing = TRUE))[1]
+    data[[var]][is.na(data[[var]])] <- mode_val
+  }
+}
+
+# Zmienne numeryczne do imputacji medianą
+num_vars_to_impute <- c("LoanAmount", "ApplicantIncome", "CoapplicantIncome") # Credit_History już obsłużone jako kat
+for (var in num_vars_to_impute) {
+  if (var %in% names(data)) {
+    median_val <- median(data[[var]], na.rm = TRUE)
+    data[[var]][is.na(data[[var]])] <- median_val
+  }
+}
+
+# Sprawdzenie brakujących wartości po imputacji
+# sum(is.na(data)) # Powinno być 0
+
+# 2. Przekształcanie zmiennych kategorycznych na czynniki (faktory)
+# Ważne dla modeli, aby traktować te zmienne jako kategorie.
+# Zmienna celu 'Loan_Status' również powinna być faktorem
+data$Loan_Status <- as.factor(data$Loan_Status)
+
+# Pozostałe zmienne kategoryczne
+categorical_cols <- c(
+  "Gender", "Married", "Dependents", "Education",
+  "Self_Employed", "Property_Area", "Credit_History", "Loan_Amount_Term"
+)
+
+for (col in categorical_cols) {
+  if (col %in% names(data)) {
+    data[[col]] <- as.factor(data[[col]])
+  }
+}
+
+# Upewnij się, że 'Dependents' ma uporządkowane poziomy lub jest prawidłowo przekształcone
+# Jeśli 'Dependents' jest numeryczną reprezentacją (np. 0, 1, 2, 3+), upewnij się, że jest traktowane jako czynnik
+# W przypadku "3+" lepiej jest to przekształcić na 3 dla celów numerycznych, jeśli model tego wymaga,
+# ale dla czynnika może zostać jako osobny poziom.
+
+# Jeśli 'Dependents' ma poziomy takie jak "3+", przekształćmy to na 3 dla prostoty w modelu,
+# a następnie przekształcimy na faktor.
+if ("Dependents" %in% names(data)) {
+  data$Dependents <- as.character(data$Dependents)
+  data$Dependents[data$Dependents == "3+"] <- "3"
+  data$Dependents <- as.factor(data$Dependents)
+}
+
+# Zmienne do modelu (wyklucz Loan_ID, który jest tylko identyfikatorem)
+# Możesz dostosować listę zmiennych w zależności od Twojego zbioru danych i analizy.
+features <- setdiff(names(data), c("Loan_ID", "Loan_Status"))
+```
+
+```{r warning = FALSE, message = FALSE}
+# Krok 1: Podział danych na zbiór treningowy i testowy (opcjonalnie, ale dobra praktyka)
+# Walidacja krzyżowa zajmie się podziałem wewnętrznie, ale ogólny podział jest dobry do ostatecznej oceny.
+set.seed(123) # Dla powtarzalności wyników
+# Utwórz indeksy dla danych treningowych (np. 80%)
+trainIndex <- createDataPartition(data$Loan_Status, p = .8, list = FALSE, times = 1)
+data_train <- data[ trainIndex,]
+data_test  <- data[-trainIndex,]
+
+# Krok 2: Konfiguracja walidacji krzyżowej
+# trainControl kontroluje parametry walidacji krzyżowej.
+# method = "cv" oznacza walidację krzyżową
+# number = 10 oznacza 10-krotną walidację krzyżową
+# classProbs = TRUE pozwala na obliczenie prawdopodobieństw klas, użyteczne dla ROC
+# summaryFunction = twoClassSummary - dla problemów klasyfikacji binarnej (wymaga klasy jako factor)
+fitControl <- trainControl(
+  method = "cv",
+  number = 10,
+  classProbs = TRUE,
+  summaryFunction = twoClassSummary, # Funkcja do oceny dla klasyfikacji binarnej
+  savePredictions = "final" # Zachowaj przewidywania dla każdej fałdy
+)
+
+# Krok 3: Budowa modelu regresji logistycznej z walidacją krzyżową
+cat("\n### Budowa modelu regresji logistycznej z walidacją krzyżową ###\n")
+# Zmienna celu 'Loan_Status' powinna być faktorem z dwoma poziomami (np. 'Y', 'N')
+# Upewnij się, że poziom referencyjny jest ustawiony poprawnie, jeśli to ma znaczenie dla interpretacji
+# Na przykład, jeśli 'Y' (pożyczka udzielona) jest klasą pozytywną, to ustaw factor(..., levels = c("N", "Y"))
+# caret automatycznie obsługuje przekształcenie dla 'glm'
+
+# Sprawdź poziomy Loan_Status
+# levels(data_train$Loan_Status)
+# Jeśli chcesz Y jako pozytywną klasę, upewnij się, że jest drugim poziomem lub obsłuż to w summaryFunction
+
+# Model regresji logistycznej (glm - generalized linear model)
+# . oznacza użycie wszystkich pozostałych zmiennych jako predyktorów
+model_glm <- train(
+  Loan_Status ~ .,
+  data = data_train,
+  method = "glm", # Określa, że używamy generalized linear model (regresja logistyczna)
+  family = binomial(link = "logit"), # family = binomial z link = "logit" dla regresji logistycznej
+  trControl = fitControl,
+  metric = "ROC" # Metryka do optymalizacji modelu w cross-validation (np. ROC AUC)
+)
+```
+
+```{r warning = FALSE, message = FALSE}
+# Krok 4: Przewidywania na zbiorze testowym
+cat("\n### Ocena modelu na zbiorze testowym ###\n")
+predictions_glm <- predict(model_glm, newdata = data_test)
+
+# Krok 5: Macierz pomyłek
+# confusionMatrix wymaga, aby zarówno przewidywania, jak i rzeczywiste wartości były faktorami
+confusion_matrix_glm <- confusionMatrix(predictions_glm, data_test$Loan_Status, positive = "Y") # Ustawiamy "Y" jako klasę pozytywną
+
+cat("\n### Macierz Pomyłek dla Modelu Regresji Logistycznej ###\n")
+print(confusion_matrix_glm)
+
+# Krok 6: Statystyki na bazie macierzy pomyłek
+# Accuracy
+accuracy_glm <- confusion_matrix_glm$overall["Accuracy"]
+cat(paste("\nAccuracy (Dokładność):", round(accuracy_glm, 4), "\n"))
+
+# Precision (Precyzja)
+# Precision = TP / (TP + FP)
+# W confusionMatrix jest to "Pos Pred Value" (Positive Predictive Value)
+precision_glm <- confusion_matrix_glm$byClass["Pos Pred Value"]
+cat(paste("Precision (Precyzja):", round(precision_glm, 4), "\n"))
+
+# Recall (Czułość / Kompletność)
+# Recall = TP / (TP + FN)
+# W confusionMatrix jest to "Sensitivity"
+recall_glm <- confusion_matrix_glm$byClass["Sensitivity"]
+cat(paste("Recall (Czułość/Kompletność):", round(recall_glm, 4), "\n"))
+
+# F1-Score
+# F1-Score = 2 * (Precision * Recall) / (Precision + Recall)
+f1_score_glm <- 2 * (precision_glm * recall_glm) / (precision_glm + recall_glm)
+cat(paste("F1-Score:", round(f1_score_glm, 4), "\n"))
+
+# Metryki z walidacji krzyżowej (średnie dla wszystkich fałd)
+cat("\n### Średnie metryki z walidacji krzyżowej (model_glm) ###\n")
+print(model_glm$results)
+
+```
