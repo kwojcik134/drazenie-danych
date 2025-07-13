@@ -1,6 +1,6 @@
 ---
 title: 'Analityk kredytowy w Dream Housing Finance Company'
-author: "Martyna Szypuła, Katarzyna Wójcik, Bartosz Zawora????"
+author: "Martyna Szypuła, Katarzyna Wójcik"
 output:
 html_document:
   df_print: paged
@@ -17,13 +17,11 @@ html_document:
     <td>Imię i Nazwisko: </td>
     <td style="padding-right: 20px;">Martyna Szypuła</td>
     <td style="padding-right: 20px;">Katarzyna Wójcik</td>
-    <td style="padding-right: 20px;">Bartosz Zawora???</td>
   </tr>
   <tr>
     <td>Numer albumu: </td>
     <td>69852</td>
     <td>70855</td>
-    <td>11111</td>
   </tr>
   <tr>
     <td style="padding-right: 20px;">Rok, semestr, kierunek studiów: </td>
@@ -56,7 +54,7 @@ Firma chce zautomatyzować proces przyznawania pożyczek (w czasie rzeczywistym)
 ```{r warning = FALSE, message = FALSE}
 #Instalowanie
 # options(repos = c(CRAN = "https://cloud.r-project.org"))
-# install.packages(c("readr", "knitr", "kableExtra", "dplyr", "e1071", "ggplot2"), dependencies = TRUE)
+# install.packages(c("readr", "knitr", "kableExtra", "dplyr", "e1071", "ggplot2", "caret", "MLmetrics", "rpart"), dependencies = TRUE)
 
 #Importowanie
 library(readr)
@@ -65,6 +63,10 @@ library(kableExtra)
 library(dplyr)
 library(e1071)
 library(ggplot2)
+library(tidyr)
+library(caret)
+library(MLmetrics)
+library(rpart)
 ```
 
 
@@ -73,11 +75,9 @@ library(ggplot2)
 Plik CSV zawierający dane o klientach z nadanym statusem przyznania bądź nie pożyczki 'Loan_Status'
 
 ```{r warning=FALSE, message = FALSE}
-setwd("C:/Users/RSM18/Documents/Drazenie")
-loan_data <- read_delim("train.csv", delim = ";", 
-   escape_double = FALSE, col_types = cols(Dependents = col_number(), 
-       LoanAmount = col_double()), trim_ws = TRUE)
-attach(loan_data)
+loan_data <- tidyr::drop_na(read_delim("C:/Users/katar/Downloads/Loan predictions - Dream Housing Finance Company/Loan predictions - Dream Housing Finance Company/train.csv", delim = ";",
+  escape_double = FALSE, col_types = cols(Dependents = col_number(),
+  LoanAmount = col_double()), trim_ws = TRUE))
 ```
 
 
@@ -89,7 +89,6 @@ loan_data %>%
 ```
 
 --------------------------------------------
-
 ### Zadanie 1
 
 Scharakteryzuj zmienne ApplicantIncome, CoapplicantIncome, LoanAmount w zakresie: minimum, pierwszy kwartyl, medina, średnia, trzeci kwartyl, maksimum, odchylenie standardowe, wybrana miarę asymetrii i koncentracji w każdej z grup: według płci (Gender) i według stanu cywilnego (Married).
@@ -98,21 +97,23 @@ Scharakteryzuj zmienne ApplicantIncome, CoapplicantIncome, LoanAmount w zakresie
 
 
 ```{r warning = FALSE, message = FALSE}
-loan_data %>% group_by(Gender) %>% summarise(
+# ApplicantIncome
+loan_data %>% dplyr::group_by(Gender) %>% dplyr::summarise(
   Minimum = min(ApplicantIncome, na.rm = TRUE),
   Q1 = quantile(ApplicantIncome, probs = 0.25, na.rm = TRUE),
   Mediana = median(ApplicantIncome, na.rm = TRUE),
   Srednia = mean(ApplicantIncome, na.rm = TRUE),
-  Q3 = quantile(ApplicantIncome, probs = 0.75, na.rm = TRUE),
+  Q3 = quantile(ApplicantIncome, probs = 0.75, na_rm = TRUE),
   Maksimum = max(ApplicantIncome, na.rm = TRUE),
   Odchylenie = sd(ApplicantIncome, na.rm = TRUE),
-  Asymetria_TMC = skewness(ApplicantIncome, na.rm = TRUE),
-  Kurtoza = kurtosis(ApplicantIncome, na.rm = TRUE)
-) %>% 
-  knitr::kable(caption = 'ApplicantIncome', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% 
+  Asymetria_TMC = e1071::skewness(ApplicantIncome, na.rm = TRUE), # Jawne wywołanie
+  Kurtoza = e1071::kurtosis(ApplicantIncome, na.rm = TRUE)        # Jawne wywołanie
+) %>%
+  knitr::kable(caption = 'ApplicantIncome (według płci)', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>%
   kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
 
-loan_data %>% group_by(Gender) %>% summarise(
+# CoapplicantIncome
+loan_data %>% dplyr::group_by(Gender) %>% dplyr::summarise(
   Minimum = min(CoapplicantIncome, na.rm = TRUE),
   Q1 = quantile(CoapplicantIncome, probs = 0.25, na.rm = TRUE),
   Mediana = median(CoapplicantIncome, na.rm = TRUE),
@@ -120,13 +121,14 @@ loan_data %>% group_by(Gender) %>% summarise(
   Q3 = quantile(CoapplicantIncome, probs = 0.75, na.rm = TRUE),
   Maksimum = max(CoapplicantIncome, na.rm = TRUE),
   Odchylenie = sd(CoapplicantIncome, na.rm = TRUE),
-  Asymetria_TMC = skewness(CoapplicantIncome, na.rm = TRUE),
-  Kurtoza = kurtosis(CoapplicantIncome, na.rm = TRUE)
-) %>% 
-  knitr::kable(caption = 'CoapplicantIncome', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% 
+  Asymetria_TMC = e1071::skewness(CoapplicantIncome, na.rm = TRUE),
+  Kurtoza = e1071::kurtosis(CoapplicantIncome, na.rm = TRUE)
+) %>%
+  knitr::kable(caption = 'CoapplicantIncome (według płci)', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>%
   kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
 
-loan_data %>% group_by(Gender) %>% summarise(
+# LoanAmount
+loan_data %>% dplyr::group_by(Gender) %>% dplyr::summarise(
   Minimum = min(LoanAmount, na.rm = TRUE),
   Q1 = quantile(LoanAmount, probs = 0.25, na.rm = TRUE),
   Mediana = median(LoanAmount, na.rm = TRUE),
@@ -134,10 +136,10 @@ loan_data %>% group_by(Gender) %>% summarise(
   Q3 = quantile(LoanAmount, probs = 0.75, na.rm = TRUE),
   Maksimum = max(LoanAmount, na.rm = TRUE),
   Odchylenie = sd(LoanAmount, na.rm = TRUE),
-  Asymetria_TMC = skewness(LoanAmount, na.rm = TRUE),
-  Kurtoza = kurtosis(LoanAmount, na.rm = TRUE)
-) %>% 
-  knitr::kable(caption = 'LoanAmount', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% 
+  Asymetria_TMC = e1071::skewness(LoanAmount, na.rm = TRUE),
+  Kurtoza = e1071::kurtosis(LoanAmount, na.rm = TRUE)
+) %>%
+  knitr::kable(caption = 'LoanAmount (według płci)', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>%
   kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
 
 ```
@@ -145,8 +147,9 @@ loan_data %>% group_by(Gender) %>% summarise(
 #### Według stanu cywilnego
 
 ```{r warning = FALSE, message = FALSE}
-loan_data %>% filter(is.na(Married) == FALSE) %>% 
-  group_by(Married) %>% summarise(
+# Wcześniej był filter(is.na(Married) == FALSE) - po imputacji nie ma potrzeby
+# ApplicantIncome
+loan_data %>% dplyr::group_by(Married) %>% dplyr::summarise(
   Minimum = min(ApplicantIncome, na.rm = TRUE),
   Q1 = quantile(ApplicantIncome, probs = 0.25, na.rm = TRUE),
   Mediana = median(ApplicantIncome, na.rm = TRUE),
@@ -154,14 +157,14 @@ loan_data %>% filter(is.na(Married) == FALSE) %>%
   Q3 = quantile(ApplicantIncome, probs = 0.75, na.rm = TRUE),
   Maksimum = max(ApplicantIncome, na.rm = TRUE),
   Odchylenie = sd(ApplicantIncome, na.rm = TRUE),
-  Asymetria_TMC = skewness(ApplicantIncome, na.rm = TRUE),
-  Kurtoza = kurtosis(ApplicantIncome, na.rm = TRUE)
-) %>% 
-  knitr::kable(caption = 'ApplicantIncome', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% 
+  Asymetria_TMC = e1071::skewness(ApplicantIncome, na.rm = TRUE),
+  Kurtoza = e1071::kurtosis(ApplicantIncome, na.rm = TRUE)
+) %>%
+  knitr::kable(caption = 'ApplicantIncome (według stanu cywilnego)', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>%
   kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
 
-loan_data %>% filter(is.na(Married) == FALSE) %>%
-  group_by(Married) %>% summarise(
+# CoapplicantIncome
+loan_data %>% dplyr::group_by(Married) %>% dplyr::summarise(
   Minimum = min(CoapplicantIncome, na.rm = TRUE),
   Q1 = quantile(CoapplicantIncome, probs = 0.25, na.rm = TRUE),
   Mediana = median(CoapplicantIncome, na.rm = TRUE),
@@ -169,14 +172,14 @@ loan_data %>% filter(is.na(Married) == FALSE) %>%
   Q3 = quantile(CoapplicantIncome, probs = 0.75, na.rm = TRUE),
   Maksimum = max(CoapplicantIncome, na.rm = TRUE),
   Odchylenie = sd(CoapplicantIncome, na.rm = TRUE),
-  Asymetria_TMC = skewness(CoapplicantIncome, na.rm = TRUE),
-  Kurtoza = kurtosis(CoapplicantIncome, na.rm = TRUE)
-) %>% 
-  knitr::kable(caption = 'CoapplicantIncome', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% 
+  Asymetria_TMC = e1071::skewness(CoapplicantIncome, na.rm = TRUE),
+  Kurtoza = e1071::kurtosis(CoapplicantIncome, na.rm = TRUE)
+) %>%
+  knitr::kable(caption = 'CoapplicantIncome (według stanu cywilnego)', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>%
   kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
 
-loan_data %>% filter(is.na(Married) == FALSE) %>% 
-  group_by(Married) %>% summarise(
+# LoanAmount
+loan_data %>% dplyr::group_by(Married) %>% dplyr::summarise(
   Minimum = min(LoanAmount, na.rm = TRUE),
   Q1 = quantile(LoanAmount, probs = 0.25, na.rm = TRUE),
   Mediana = median(LoanAmount, na.rm = TRUE),
@@ -184,12 +187,63 @@ loan_data %>% filter(is.na(Married) == FALSE) %>%
   Q3 = quantile(LoanAmount, probs = 0.75, na.rm = TRUE),
   Maksimum = max(LoanAmount, na.rm = TRUE),
   Odchylenie = sd(LoanAmount, na.rm = TRUE),
-  Asymetria_TMC = skewness(LoanAmount, na.rm = TRUE),
-  Kurtoza = kurtosis(LoanAmount, na.rm = TRUE)
-) %>% 
-  knitr::kable(caption = 'LoanAmount', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% 
+  Asymetria_TMC = e1071::skewness(LoanAmount, na.rm = TRUE),
+  Kurtoza = e1071::kurtosis(LoanAmount, na.rm = TRUE)
+) %>%
+  knitr::kable(caption = 'LoanAmount (według stanu cywilnego)', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>%
   kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
 
+```
+
+### Zadanie 2
+Oblicz jak często pożyczkę dostawały osoby Married=Y a jak często osoby Married=N. (tabela liczności). 
+
+```{r warning = FALSE, message = FALSE}
+cat("### Częstość przyznawania pożyczek według stanu cywilnego (Married) ###\n")
+loan_status_married_df <- loan_data %>%
+  dplyr::group_by(Married, Loan_Status) %>%
+  dplyr::summarise(Liczba = n(), .groups = 'drop') %>% # Dodano .groups = 'drop' dla czystszego wyniku
+  dplyr::ungroup() %>%
+  dplyr::group_by(Married) %>%
+  dplyr::mutate(Procent = Liczba / sum(Liczba) * 100)
+
+loan_status_married_df %>%
+  knitr::kable(
+    caption = 'Częstość przyznawania pożyczek według stanu cywilnego',
+    align = 'c',
+    digits = 2,
+    format.args = list(big.mark = ",") # Formatowanie liczb
+  ) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "responsive"),
+    full_width = FALSE,
+    position = "left"
+  )
+```
+
+### Zadanie 3
+Oblicz jak często pożyczkę dostawały osoby Self_employed=Y a jak często osoby Self_employed=N. (tabela liczności). 
+```{r warning = FALSE, message = FALSE}
+loan_status_self_employed <- loan_data %>%
+  dplyr::group_by(Self_Employed, Loan_Status) %>%
+  dplyr::summarise(Liczba = n()) %>% # Dodano .groups = 'drop' dla czystszego wyniku
+  dplyr::ungroup() %>%
+  dplyr::group_by(Self_Employed) %>% 
+  dplyr::mutate(Procent = Liczba / sum(Liczba) * 100)
+
+loan_status_self_employed %>%
+  knitr::kable(
+    caption = 'Częstość przyznawania pożyczek według statusu zatrudnienia',
+    align = 'c',
+    digits = 2,
+    format.args = list(big.mark = ",") # Formatowanie liczb
+  ) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "responsive"),
+    full_width = FALSE,
+    position = "left"
+  )
+loan_status_self_employed
 ```
 
 ### Zadanie 4
@@ -226,7 +280,52 @@ ggplot(data = loan_data,
 
 ```
 
+### Zadanie 5
+ Dla wybranych zmiennych zrób wykres ramka-wąsy (boxplot). Niech zmienna Married będzie tworzyła serie. Dodał tytuł, opis osi, legendę.
+ 
+#### Wykres ramka-wąsy dla LoanAmount z podziałem na Gender
+```{r warning = FALSE, message = FALSE}
+ggplot(data = loan_data,
+       aes(x = Loan_Status, y = ApplicantIncome, color = Married)) +
+  geom_boxplot(aes(color = Married)) +
+  labs(title = "Rozkład Dochodu Wnioskodawcy według Stanu Cywilnego",
+       x = "Status Pożyczki",
+       y = "Dochód Wnioskodawcy",
+       color = "Stan Cywilny") +
+  theme_minimal()
+
+```
+
+### Zadanie 6
+ Dla pary zmiennych ApplicantIncome, CoapplicantIncome zrób wykres rozrzutu. Niech zmienna Self_employed będzie tworzyła serie. Dodał tytuł, opis osi, legendę.
+ 
+```{r warning = FALSE, message = FALSE}
+  ggplot(data = loan_data, aes(x = ApplicantIncome, y = CoapplicantIncome, color = Self_Employed)) +
+  geom_point(alpha = 0.6) + 
+  labs(
+    title = "Zależność między dochodem wnioskodawcy a dochodem współwnioskodawcy według statusu zatrudnienia",
+    x = "Dochód wnioskodawcy",
+    y = "Dochód współwnioskodawcy",
+    color = "Samozatrudniony" 
+  ) +
+  theme_minimal() 
+```
+
 ### Zadanie 7
+Dla pary zmiennych ApplicantIncome, CoapplicantIncome zrób wykres rozrzutu. Niech zmienna Self_employed będzie tworzyła serie. Dodał tytuł, opis osi, legendę.
+```{r warning = FALSE, message = FALSE}
+  ggplot(data = loan_data, aes(x = ApplicantIncome, y = CoapplicantIncome, color = Self_Employed)) +
+  geom_point(alpha = 0.6) + 
+  labs(
+    title = "Zależność między dochodem wnioskodawcy a dochodem współwnioskodawcy według statusu zatrudnienia", 
+    x = "Dochód wnioskodawcy",       
+    y = "Dochód współwnioskodawcy",  
+    color = "Samozatrudniony"       
+  ) +
+  theme_minimal() 
+```
+
+### Zadanie 8
 Dla par zmiennych ApplicantIncome, LoanAmount zrób wykres rozrzutu. Niech zmienna Married będzie tworzyła serie. Dodał tytuł, opis osi, legendę.
 
 ```{r warning = FALSE, message = FALSE}
@@ -246,7 +345,149 @@ ggplot(data = (loan_data %>% filter(is.na(Married) == FALSE)),
 
 ```
 
+### Zadanie 9
+#### Budowa 95% przedziałów ufności dla średniej i wariancji
+
+Zbuduj 95% przedział ufności dla średniej i wariancji dla zmiennych ApplicantIncome, LoanAmount osobno dla kobiet i mężczyzn.
+
+```{r confidence_intervals, warning = FALSE, message = FALSE}
+# Inicjalizacja pustej ramki danych do przechowywania wyników
+confidence_intervals_df <- data.frame(
+  Zmienna = character(),
+  Grupa = character(),
+  Typ_Przedzialu = character(),
+  Dolna_Granica = numeric(),
+  Gorna_Granica = numeric(),
+  stringsAsFactors = FALSE
+)
+
+# Funkcja pomocnicza do dodawania wierszy do ramki danych
+add_interval_row <- function(df, variable, group, interval_type, lower, upper) {
+  rbind(df, data.frame(
+    Zmienna = variable,
+    Grupa = group,
+    Typ_Przedzialu = interval_type,
+    Dolna_Granica = lower,
+    Gorna_Granica = upper,
+    stringsAsFactors = FALSE
+  ))
+}
+
+alpha <- 0.05 
+
+# --- Dla ApplicantIncome ---
+# Kobiety
+income_female <- loan_data$ApplicantIncome[loan_data$Gender == "Female"]
+cat(sprintf("\nApplicantIncome - Kobiety: Liczba obserwacji = %d\n", length(income_female)))
+if (length(income_female) >= 2) {
+  t_test_female_income <- t.test(income_female, conf.level = 0.95)
+  confidence_intervals_df <- add_interval_row(confidence_intervals_df,
+                                              "ApplicantIncome", "Kobiety", "Średnia",
+                                              t_test_female_income$conf.int[1], t_test_female_income$conf.int[2])
+
+  chi_sq_var_female_income <- var(income_female, na.rm = TRUE)
+  n_female_income <- length(na.omit(income_female))
+  lower_var_female_income <- ((n_female_income - 1) * chi_sq_var_female_income) / qchisq(1 - alpha/2, df = n_female_income - 1)
+  upper_var_female_income <- ((n_female_income - 1) * chi_sq_var_female_income) / qchisq(alpha/2, df = n_female_income - 1)
+  confidence_intervals_df <- add_interval_row(confidence_intervals_df,
+                                              "ApplicantIncome", "Kobiety", "Wariancja",
+                                              lower_var_female_income, upper_var_female_income)
+} else {
+  cat("Brak wystarczającej liczby obserwacji dla ApplicantIncome - Kobiet do obliczenia przedziałów ufności.\n")
+}
+
+# Mężczyźni
+income_male <- loan_data$ApplicantIncome[loan_data$Gender == "Male"]
+cat(sprintf("ApplicantIncome - Mężczyźni: Liczba obserwacji = %d\n", length(income_male)))
+if (length(income_male) >= 2) {
+  t_test_male_income <- t.test(income_male, conf.level = 0.95)
+  confidence_intervals_df <- add_interval_row(confidence_intervals_df,
+                                              "ApplicantIncome", "Mężczyźni", "Średnia",
+                                              t_test_male_income$conf.int[1], t_test_male_income$conf.int[2])
+
+  chi_sq_var_male_income <- var(income_male, na.rm = TRUE)
+  n_male_income <- length(na.omit(income_male))
+  lower_var_male_income <- ((n_male_income - 1) * chi_sq_var_male_income) / qchisq(1 - alpha/2, df = n_male_income - 1)
+  upper_var_male_income <- ((n_male_income - 1) * chi_sq_var_male_income) / qchisq(alpha/2, df = n_male_income - 1)
+  confidence_intervals_df <- add_interval_row(confidence_intervals_df,
+                                              "ApplicantIncome", "Mężczyźni", "Wariancja",
+                                              lower_var_male_income, upper_var_male_income)
+} else {
+  cat("Brak wystarczającej liczby obserwacji dla ApplicantIncome - Mężczyzn do obliczenia przedziałów ufności.\n")
+}
+
+# --- Dla LoanAmount ---
+# Kobiety
+loanamount_female <- loan_data$LoanAmount[loan_data$Gender == "Female"]
+cat(sprintf("\nLoanAmount - Kobiety: Liczba obserwacji = %d\n", length(loanamount_female)))
+if (length(loanamount_female) >= 2) {
+  t_test_female_loanamount <- t.test(loanamount_female, conf.level = 0.95)
+  confidence_intervals_df <- add_interval_row(confidence_intervals_df,
+                                              "LoanAmount", "Kobiety", "Średnia",
+                                              t_test_female_loanamount$conf.int[1], t_test_female_loanamount$conf.int[2])
+
+  chi_sq_var_female_loanamount <- var(loanamount_female, na.rm = TRUE)
+  n_female_loanamount <- length(na.omit(loanamount_female))
+  lower_var_female_loanamount <- ((n_female_loanamount - 1) * chi_sq_var_female_loanamount) / qchisq(1 - alpha/2, df = n_female_loanamount - 1)
+  upper_var_female_loanamount <- ((n_female_loanamount - 1) * chi_sq_var_female_loanamount) / qchisq(alpha/2, df = n_female_loanamount - 1)
+  confidence_intervals_df <- add_interval_row(confidence_intervals_df,
+                                              "LoanAmount", "Kobiety", "Wariancja",
+                                              lower_var_female_loanamount, upper_var_female_loanamount)
+} else {
+  cat("Brak wystarczającej liczby obserwacji dla LoanAmount - Kobiet do obliczenia przedziałów ufności.\n")
+}
+
+# Mężczyźni
+loanamount_male <- loan_data$LoanAmount[loan_data$Gender == "Male"]
+cat(sprintf("LoanAmount - Mężczyźni: Liczba obserwacji = %d\n", length(loanamount_male)))
+if (length(loanamount_male) >= 2) {
+  t_test_male_loanamount <- t.test(loanamount_male, conf.level = 0.95)
+  confidence_intervals_df <- add_interval_row(confidence_intervals_df,
+                                              "LoanAmount", "Mężczyźni", "Średnia",
+                                              t_test_male_loanamount$conf.int[1], t_test_male_loanamount$conf.int[2])
+
+  chi_sq_var_male_loanamount <- var(loanamount_male, na.rm = TRUE)
+  n_male_loanamount <- length(na.omit(loanamount_male))
+  lower_var_male_loanamount <- ((n_male_loanamount - 1) * chi_sq_var_male_loanamount) / qchisq(1 - alpha/2, df = n_male_loanamount - 1)
+  upper_var_male_loanamount <- ((n_male_loanamount - 1) * chi_sq_var_male_loanamount) / qchisq(alpha/2, df = n_male_loanamount - 1)
+  confidence_intervals_df <- add_interval_row(confidence_intervals_df,
+                                              "LoanAmount", "Mężczyźni", "Wariancja",
+                                              lower_var_male_loanamount, upper_var_male_loanamount)
+} else {
+  cat("Brak wystarczającej liczby obserwacji dla LoanAmount - Mężczyzn do obliczenia przedziałów ufności.\n")
+}
+
+
+# Wyświetlenie tabeli wyników
+if (nrow(confidence_intervals_df) > 0) {
+  confidence_intervals_df %>%
+    knitr::kable(
+      caption = '95% Przedziały Ufności dla średniej i wariancji (według płci)',
+      align = 'c',
+      digits = 2,
+      format.args = list(big.mark = ",")
+    ) %>%
+    kable_styling(
+      bootstrap_options = c("striped", "responsive"),
+      full_width = FALSE,
+      position = "left"
+    )
+} else {
+  cat("\nBrak wystarczającej liczby danych do wygenerowania tabeli przedziałów ufności po usunięciu brakujących wartości.\n")
+}
+  
+```
 ### Zadanie 10
+Sprawdź czy średni poziom zmiennej ApplicantIncome różni się pomiędzy grupą osób, które otrzymały pożyczkę i nie (zmienna Loan_status)
+
+```{r warning = FALSE, message = FALSE}
+loan_data %>% group_by(Loan_Status) %>% 
+  summarise(Średnia = mean(ApplicantIncome, na.rm = TRUE)) %>% 
+  knitr::kable(caption = "Średnia ApplicantIncome", align = 'c', digits = 2, format.args = list(big.mark = ",")) %>% 
+  kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
+```
+
+### Zadanie 11
 Sprawdź czy wariancja zmiennej ApplicantIncome różni się pomiędzy grupą osób, które otrzymały pożyczkę i nie (zmienna Loan_status)
 
 ```{r warning = FALSE, message = FALSE}
@@ -256,4 +497,103 @@ loan_data %>% group_by(Loan_Status) %>%
   kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
 ```
 
+### Zdanie 12 Model
 
+```{r warning = FALSE}
+library(dplyr)
+#NA nie istnieją - usunięte przy ładowaniu danych
+
+#Faktoryzacja zmiennych kategorycznych
+
+Loan_Status <- as.factor(loan_data$Loan_Status)
+
+# Pozostałe zmienne kategoryczne
+categorical_cols <- c(
+  "Gender", "Married", "Education", "Self_Employed", "Property_Area", "Credit_History", "Loan_Amount_Term")
+
+for (col in categorical_cols) {
+  if (col %in% names(loan_data)) {
+    loan_data[[col]] <- as.factor(loan_data[[col]])
+  }
+}
+loan_data <- loan_data[!names(loan_data) %in% "Loan_ID"]
+# Podział danych na zbiór treningowy i testowy.
+set.seed(123)
+trainIndex <- caret::createDataPartition(Loan_Status, p = .8, list = FALSE)
+data_train <- loan_data[ trainIndex,]
+data_test  <- loan_data[-trainIndex,]
+
+data_train["Loan_Status"] = factor(data_train$Loan_Status)
+data_test["Loan_Status"] = factor(data_test$Loan_Status)
+
+# Walidacja krzyżowa)
+fitControl <- caret::trainControl(
+  method = "repeatedcv",
+  number = 10,
+  repeats = 10)
+
+#Trenowanie modelu 1: CART
+
+cartModel <- rpart::rpart(Loan_Status~.,
+                  data=data_train, 
+                  method="class", 
+                  model=TRUE, 
+                  control=rpart::rpart.control(minsplit=2,minbucket =1,cp=0.05,xval=10))
+
+cart_pred <- predict(cartModel, data_test[!names(data_test) %in% "Loan_Status"], type ="class")
+
+cart_pred = as.factor(cart_pred)
+
+confusion_CART <- caret::confusionMatrix(reference = data_test$Loan_Status, 
+                                         data = cart_pred, mode = "prec_recall")
+
+
+confusion_df_cart <- as.data.frame(confusion_CART$table)
+confusion_df_cart %>% 
+  knitr::kable(caption = 'Macierz pomyłek modelu CART', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
+
+metrics_df_cart <- data.frame(
+  Accuracy = confusion_CART$overall["Accuracy"],
+  Precision = confusion_CART$byClass["Precision"],
+  Recall = confusion_CART$byClass["Recall"],
+  F1 = confusion_CART$byClass["F1"]
+)
+
+metrics_df_cart %>% 
+    knitr::kable(caption = 'Metryki modelu CART', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
+
+#Trenowanie modelu 2: knn
+
+knnModel <- caret::train(Loan_Status~.,
+                  method = 'knn',
+                  data = data_train,
+                  trControl = fitControl,
+                  tuneGrid=data.frame(k=1:30))
+
+knn_pred <- predict(knnModel, data_test[!names(data_test) %in% "Loan_Status"], type = "raw")
+
+knn_pred = as.factor(knn_pred)
+
+confusion_knn <- caret::confusionMatrix(reference = data_test$Loan_Status, 
+                                         data = knn_pred, mode = "prec_recall")
+
+
+confusion_df_knn <- as.data.frame(confusion_knn$table)
+confusion_df_knn %>% 
+  knitr::kable(caption = 'Macierz pomyłek modelu knn', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
+
+metrics_df_knn <- data.frame(
+  Accuracy = confusion_knn$overall["Accuracy"],
+  Precision = confusion_knn$byClass["Precision"],
+  Recall = confusion_knn$byClass["Recall"],
+  F1 = confusion_knn$byClass["F1"]
+)
+
+metrics_df_knn %>% 
+    knitr::kable(caption = 'Metryki modelu knn', align = 'c', digits = 2, format.args = list(big.mark = ",")) %>%
+  kableExtra::kable_styling(bootstrap_options = c("striped", "responsive"), full_width = FALSE, position = "left")
+
+```
